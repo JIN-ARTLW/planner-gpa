@@ -200,6 +200,8 @@ const $$ = s => [...document.querySelectorAll(s)];
 const pad = n => String(n).padStart(2,'0');
 
 const DEFAULT_REPO = 'JIN-ARTLW/planner-data';   /* 토큰만 넣으면 바로 연동되게 프리셋 */
+const SITE_REPO    = 'JIN-ARTLW/planner-gpa';    /* 금고(vault.json)가 놓이는 공개 저장소 — 커밋은 수동 */
+const VAULT_ITER   = 1200000;                    /* PBKDF2 반복 횟수 */
 const BIN_KEYS = ['wake','sleep'];   /* 성공/실패 이진 과목 */
 const BINS = [
   {key:'wake',  label:'기상',  emoji:'⏰', desc:'계획한 기상'},
@@ -378,6 +380,59 @@ const b64decode = b64 => {
   const bytes = Uint8Array.from(bin, ch=>ch.charCodeAt(0));
   return new TextDecoder().decode(bytes);
 };
+/* ---------- 토큰 금고 — 암호(PBKDF2+AES-GCM) 기반, vault.json은 공개 저장소에 수동 커밋 ---------- */
+const bytesToB64 = u8 => { let s=''; u8.forEach(b=>s+=String.fromCharCode(b)); return btoa(s); };
+const b64ToBytes = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+async function vaultKey(pass, salt, iter){
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:iter, hash:'SHA-256'}, km,
+    {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function makeVaultBlob(pass){
+  const s=settings();
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await vaultKey(pass, salt, VAULT_ITER);
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(s.token)));
+  return JSON.stringify({v:1, iter:VAULT_ITER, repo:s.repo, branch:s.branch, path:s.path,
+    salt:bytesToB64(salt), iv:bytesToB64(iv), ct:bytesToB64(ct)});
+}
+let siteVault=null;
+async function loadSiteVault(){
+  try{
+    const r=await fetch('vault.json', {cache:'no-store'});
+    if(r.ok) siteVault=await r.json();
+  }catch(e){}
+}
+async function unlockVault(pass){
+  if(!siteVault) return;
+  if(!pass) return toast('금고 암호를 입력하세요');
+  try{
+    const key=await vaultKey(pass, b64ToBytes(siteVault.salt), siteVault.iter||VAULT_ITER);
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM', iv:b64ToBytes(siteVault.iv)}, key, b64ToBytes(siteVault.ct));
+    const token=new TextDecoder().decode(pt);
+    saveSettings({token, repo:siteVault.repo||DEFAULT_REPO, branch:siteVault.branch||'main',
+                  path:siteVault.path!==undefined?siteVault.path:'data'});
+    toast('🔓 연동됐어요!');
+    pullMonth(state.month, true); pullMonth(shiftYm(state.month,-1), true);
+    render();
+  }catch(e){ toast('암호가 맞지 않아요'); }
+}
+async function createVault(){
+  const s=settings();
+  if(!s.token) return toast('먼저 토큰을 입력하세요');
+  const p1=prompt('금고 암호를 정하세요 (숫자만 쓰면 뚫릴 수 있어요 — 단어 하나를 앞에 붙이면 훨씬 안전)');
+  if(!p1) return;
+  const p2=prompt('한 번 더 입력해서 확인');
+  if(p1!==p2) return toast('두 입력이 달라요');
+  toast('암호화 중…');
+  const blob=await makeVaultBlob(p1);
+  const link=`https://github.com/${SITE_REPO}/${siteVault?'edit':'new'}/main${siteVault?'/vault.json':'?filename=vault.json'}`;
+  try{ await navigator.clipboard.writeText(blob); }catch(e){}
+  prompt(`아래 내용이 복사됐어요. 열리는 GitHub 페이지에 붙여넣고 커밋하면 끝!\n${link}`, blob);
+  window.open(link, '_blank');
+}
+
 function ghUrl(fname){
   const s=settings();
   const parts=[...(s.path? s.path.split('/').filter(Boolean):[]), fname];
@@ -537,8 +592,18 @@ function renderEntry(){
     </div>`;
   }).join('');
 
+  const lockCard = (!settings().token && siteVault) ? `
+  <div class="card" style="margin-bottom:14px; padding:12px 14px; display:flex; gap:10px; align-items:center">
+    <span style="font-size:1.25rem">🔐</span>
+    <input type="password" id="vaultPass" placeholder="금고 암호"
+      style="flex:1; min-width:0; border:none; background:var(--seg); border-radius:10px; padding:11px 12px; font-size:.95rem; color:var(--ink); font-family:inherit">
+    <button data-act="vault-unlock"
+      style="border:none; background:var(--accent); color:#fff; border-radius:10px; padding:11px 18px; font-size:.9rem; font-weight:700; cursor:pointer">열기</button>
+  </div>`:'';
+
   $('#view').innerHTML=`
   <div class="big-title">🎓 하루학점<small>Daily GPA</small></div>
+  ${lockCard}
   <div class="datebar">
     <button data-act="date-shift" data-d="-1">‹</button>
     <span class="dlabel">${dateLabel(state.date)}</span>
@@ -561,6 +626,8 @@ function renderEntry(){
   <div class="group-label">오늘의 과목</div>
   <div class="card">${catRows}</div>
   <div class="hint">＋/− 로 오늘의 항목 개수를 정하고, 지킨 개수만큼 번호를 누르세요. 개수 0인 과목은 채점에서 빠집니다.</div>`;
+  const vp=$('#vaultPass');
+  if(vp){ vp.addEventListener('keydown', ev=>{ if(ev.key==='Enter') unlockVault(vp.value); }); vp.focus(); }
 }
 
 /* ---------- 성적표 ---------- */
@@ -663,10 +730,12 @@ function renderSettings(){
   </div>
   <div class="card btn-list" style="margin-top:10px">
     <button data-act="gh-test">연결 테스트</button>
+    <button data-act="vault-create">🔐 금고 만들기</button>
     <button data-act="copy-bookmark">🔖 시크릿모드용 북마크 URL 복사</button>
   </div>
-  <p class="note">여러 기기에서 쓰거나 기록을 GitHub에 남기고 싶을 때만 연결하세요. 비공개 저장소 +
-  Fine-grained 토큰(해당 저장소만, Contents Read/Write)이 필요합니다. 안 쓰면 이 칸은 전부 비워두면 돼요.</p>
+  <p class="note"><b>금고</b>: 토큰을 암호로 암호화한 vault.json을 만들어 사이트 저장소에 올려두면,
+  어느 기기서든 앱을 열고 암호만 입력하면 연동됩니다. 파일이 공개되는 만큼 <b>암호의 강도가 보안의 전부</b>예요 —
+  숫자만 쓰지 말고 앞에 단어 하나를 붙이세요. 토큰은 planner-data 전용(Contents R/W) 권장.</p>
 
   <div class="group-label">데이터</div>
   <div class="card btn-list">
@@ -877,6 +946,8 @@ $('#view').addEventListener('click', ev=>{
       }catch(e){ toast('❌ 실패: '+e.message); }
     })();
   }
+  else if(act==='vault-create'){ createVault(); }
+  else if(act==='vault-unlock'){ unlockVault($('#vaultPass').value); }
   else if(act==='copy-bookmark'){
     const s=settings();
     if(!s.token) return toast('토큰을 먼저 입력하세요');
@@ -910,6 +981,7 @@ $('#view').addEventListener('click', ev=>{
 
 /* ---------- 시작 ---------- */
 render();
+loadSiteVault().then(()=>{ if(!settings().token && siteVault) render(); });
 (function initialSync(){
   const s=settings();
   if(s.repo&&s.token){
