@@ -319,7 +319,7 @@ function dayRng(date){
 function gradeOf(entry){
   const rnd = dayRng(entry.date);
   const w = {}; WEIGHT_ORDER.forEach(k=> w[k] = 0.3 + rnd()*1.9);   /* 0.3 ~ 2.2 (최대 7배 차) */
-  const curve = 1.1 + rnd()*0.7;                                     /* 난이도 커브 1.1 ~ 1.8 */
+  const curve = 1.15 + rnd()*0.4;                                    /* 난이도 커브 1.15 ~ 1.55 */
   const mixA  = 0.55 + rnd()*0.3;                                    /* 최약 과목 반영 비율 */
   const cutJit= Math.floor(rnd()*4);                                 /* 등급컷 0~3점 상향 */
   let ws=0, sum=0; const ratios=[];
@@ -331,8 +331,8 @@ function gradeOf(entry){
     if(total>0){ const r=Math.min(done,total)/total; ws+=w[c.key]; sum+=w[c.key]*r; ratios.push(r); }
   });
   if(!ratios.length) return null;
-  /* 가중 평균 × 최약 과목 페널티 × 난이도 커브 — 전부 지키면 정확히 100 */
-  const mixed = mixA*(sum/ws) + (1-mixA)*Math.min(...ratios);
+  /* 가중 평균 × 최약 과목 페널티(바닥 0.35) × 난이도 커브 — 전부 지키면 정확히 100 */
+  const mixed = mixA*(sum/ws) + (1-mixA)*(0.35 + 0.65*Math.min(...ratios));
   const pct = Math.pow(mixed, curve)*100;
   const row = GRADE_TABLE.find(([min,l])=> l==='F' || pct >= min+cutJit);
   return {pct, letter:row[1], points:row[2]};
