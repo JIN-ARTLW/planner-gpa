@@ -211,7 +211,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const pad = n => String(n).padStart(2,'0');
 
-const DEFAULT_REPO = 'JIN-ARTLW/planner-data';
+const DEFAULT_REPO = '';   /* 기본은 GitHub 미사용 — 이 기기에만 저장 */
 const BIN_KEYS = ['wake','sleep'];   /* 성공/실패 이진 과목 */
 const BINS = [
   {key:'wake',  label:'기상',  emoji:'⏰', desc:'계획한 기상'},
@@ -625,8 +625,8 @@ function renderMonth(){
 
   <div class="group-label">데이터</div>
   <div class="card btn-list">
-    <button data-act="push-month">☁️ 이번 달 GitHub에 저장</button>
-    <button data-act="pull-month">⤵️ GitHub에서 불러오기</button>
+    ${settings().token?`<button data-act="push-month">☁️ 이번 달 GitHub에 저장</button>
+    <button data-act="pull-month">⤵️ GitHub에서 불러오기</button>`:''}
     <button data-act="export-md">📄 이번 달 .md 내려받기</button>
   </div>`;
 }
@@ -637,7 +637,12 @@ function renderSettings(){
   $('#view').innerHTML=`
   <div class="big-title">⚙️ 설정</div>
 
-  <div class="group-label">GitHub 동기화</div>
+  <div class="group-label">저장 방식</div>
+  <p class="note" style="margin-top:2px">기본은 <b>이 기기에만 저장</b>이에요. 토큰·GitHub 없이 그대로 쓰면 됩니다.
+  사파리 공유 버튼 → <b>홈 화면에 추가</b>로 쓰는 걸 추천 — 앱 전용 저장공간이 생겨 시크릿 모드와 무관하게 기록이 유지돼요.
+  ⚠️ 시크릿 모드 탭에서 쓰면 닫을 때 기록이 사라집니다. 가끔 아래 <b>백업</b>으로 파일을 남겨두세요.</p>
+
+  <div class="group-label">GitHub 동기화 (선택)</div>
   <div class="card">
     <div class="set-row"><label>저장소</label>
       <input type="text" id="setRepo" placeholder="owner/repo" value="${escHtml(s.repo)}"></div>
@@ -654,8 +659,8 @@ function renderSettings(){
     <button data-act="gh-test">연결 테스트</button>
     <button data-act="copy-bookmark">🔖 시크릿모드용 북마크 URL 복사</button>
   </div>
-  <p class="note">시크릿 모드에선 저장한 토큰이 매번 사라져요. 위 버튼으로 <code>#t=토큰</code>이 붙은 주소를 복사해
-  북마크에 저장해두면, 열 때마다 자동으로 연결되고 이번 달 기록을 자동으로 불러옵니다. (해시는 서버로 전송되지 않아요)</p>
+  <p class="note">여러 기기에서 쓰거나 기록을 GitHub에 남기고 싶을 때만 연결하세요. 비공개 저장소 +
+  Fine-grained 토큰(해당 저장소만, Contents Read/Write)이 필요합니다. 안 쓰면 이 칸은 전부 비워두면 돼요.</p>
 
   <div class="group-label">데이터</div>
   <div class="card btn-list">
