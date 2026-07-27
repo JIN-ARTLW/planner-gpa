@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#4f46e5">
+<title>하루학점 · Daily GPA Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+<style>
+:root{
+  --bg:#f4f5fb; --card:#ffffff; --ink:#1c2033; --sub:#6b7188; --line:#e4e6f0;
+  --accent:#4f46e5; --accent-soft:#eef0ff;
+  --gA:#16a34a; --gB:#2563eb; --gC:#d97706; --gD:#ea580c; --gF:#dc2626;
+  --shadow:0 1px 3px rgba(28,32,51,.07), 0 8px 24px rgba(28,32,51,.05);
+  --radius:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12131c; --card:#1c1e2b; --ink:#eceef7; --sub:#9aa0b8; --line:#2b2e40;
+    --accent:#818cf8; --accent-soft:#262a45;
+    --gA:#4ade80; --gB:#60a5fa; --gC:#fbbf24; --gD:#fb923c; --gF:#f87171;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html{font-size:16px}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
+  line-height:1.5;
+}
+header{
+  position:sticky; top:0; z-index:10; background:var(--bg);
+  padding:14px 16px 0; max-width:620px; margin:0 auto;
+}
+.head-row{display:flex; align-items:center; justify-content:space-between; gap:8px}
+h1{font-size:1.25rem; margin:0; letter-spacing:-.02em}
+h1 small{font-size:.72rem; font-weight:600; color:var(--sub); margin-left:6px; letter-spacing:0}
+#cloudBtn{
+  border:1px solid var(--line); background:var(--card); color:var(--sub);
+  border-radius:999px; padding:6px 12px; font-size:.8rem; cursor:pointer; display:none;
+}
+#cloudBtn.dirty{color:var(--accent); border-color:var(--accent)}
+nav{display:flex; gap:6px; margin-top:12px; border-bottom:1px solid var(--line)}
+nav button{
+  flex:1; background:none; border:none; padding:10px 0 9px; font-size:.92rem; font-weight:600;
+  color:var(--sub); cursor:pointer; border-bottom:2px solid transparent; font-family:inherit;
+}
+nav button.on{color:var(--accent); border-bottom-color:var(--accent)}
+main{max-width:620px; margin:0 auto; padding:16px 16px 60px}
+.card{
+  background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:16px; margin-bottom:14px;
+}
+.card h2{font-size:.85rem; margin:0 0 10px; color:var(--sub); font-weight:700; letter-spacing:.02em}
+button{font-family:inherit}
+/* ---------- date bar ---------- */
+.datebar{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px}
+.datebar button{
+  border:1px solid var(--line); background:var(--card); border-radius:10px;
+  width:36px; height:36px; font-size:1rem; cursor:pointer; color:var(--ink);
+}
+.datebar .dlabel{font-weight:700; font-size:1.02rem; min-width:150px; text-align:center}
+.datebar .today-btn{width:auto; padding:0 10px; font-size:.8rem; color:var(--accent)}
+/* ---------- grade card ---------- */
+.grade-hero{display:flex; align-items:center; gap:16px}
+.grade-badge{
+  width:76px; height:76px; border-radius:20px; display:flex; align-items:center; justify-content:center;
+  font-size:1.9rem; font-weight:800; color:#fff; flex-shrink:0;
+}
+.grade-meta{flex:1}
+.grade-meta .pct{font-size:1.15rem; font-weight:700}
+.grade-meta .sub{color:var(--sub); font-size:.85rem}
+.grade-bar{height:8px; border-radius:99px; background:var(--line); margin-top:8px; overflow:hidden}
+.grade-bar i{display:block; height:100%; border-radius:99px; transition:width .25s}
+/* ---------- morning row ---------- */
+.mrow{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:none}
+.mrow .mlabel{width:76px; font-weight:600; font-size:.92rem; flex-shrink:0}
+.mrow input[type=time], .mrow input[type=number]{
+  border:1px solid var(--line); background:var(--bg); color:var(--ink);
+  border-radius:8px; padding:6px 8px; font-size:.95rem; width:110px; font-family:inherit;
+}
+.seg{display:flex; gap:4px; margin-left:auto}
+.seg button{
+  border:1px solid var(--line); background:var(--card); color:var(--sub);
+  border-radius:8px; padding:5px 12px; font-size:.85rem; cursor:pointer; font-weight:600;
+}
+.seg button.ok{background:var(--gA); border-color:var(--gA); color:#fff}
+.seg button.no{background:var(--gF); border-color:var(--gF); color:#fff}
+/* ---------- category ---------- */
+.cat{padding:10px 0; border-bottom:1px solid var(--line)}
+.cat:last-child{border-bottom:none}
+.cat-head{display:flex; align-items:center; gap:8px}
+.cat-head .name{font-weight:700; font-size:.95rem}
+.cat-head .score{margin-left:auto; font-size:.9rem; color:var(--sub); font-variant-numeric:tabular-nums}
+.cat-head .score b{color:var(--ink)}
+.stepper{display:flex; align-items:center; gap:2px}
+.stepper button{
+  width:26px; height:26px; border-radius:8px; border:1px solid var(--line);
+  background:var(--card); color:var(--ink); font-size:.95rem; cursor:pointer; line-height:1;
+}
+.dots{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; min-height:8px}
+.dot{
+  width:30px; height:30px; border-radius:99px; border:1.5px solid var(--line);
+  background:var(--bg); cursor:pointer; font-size:.72rem; color:var(--sub);
+  display:flex; align-items:center; justify-content:center; font-weight:700;
+}
+.dot.on{background:var(--accent); border-color:var(--accent); color:#fff}
+.cat.empty .name, .cat.empty .score{opacity:.45}
+.hint{font-size:.78rem; color:var(--sub); margin-top:6px}
+/* ---------- KPT ---------- */
+.kpt label{display:block; font-weight:700; font-size:.82rem; margin:10px 0 4px}
+.kpt label:first-child{margin-top:0}
+.kpt textarea{
+  width:100%; min-height:54px; border:1px solid var(--line); background:var(--bg); color:var(--ink);
+  border-radius:10px; padding:8px 10px; font-size:.92rem; font-family:inherit; resize:vertical;
+}
+/* ---------- month ---------- */
+.gpa-hero{text-align:center; padding:6px 0}
+.gpa-hero .big{font-size:2.6rem; font-weight:800; letter-spacing:-.02em}
+.gpa-hero .big small{font-size:1.1rem; color:var(--sub); font-weight:600}
+.gpa-hero .lg{font-size:1rem; font-weight:700; margin-top:2px}
+.gpa-hero .sub{color:var(--sub); font-size:.85rem; margin-top:2px}
+.cal{width:100%; border-collapse:collapse; table-layout:fixed}
+.cal th{font-size:.72rem; color:var(--sub); font-weight:600; padding-bottom:6px}
+.cal td{padding:2px}
+.cal .cell{
+  border-radius:10px; padding:5px 0 6px; text-align:center; cursor:pointer;
+  border:1px solid transparent; min-height:46px;
+}
+.cal .cell:hover{border-color:var(--line)}
+.cal .cell .d{font-size:.72rem; color:var(--sub)}
+.cal .cell.today .d{color:var(--accent); font-weight:800}
+.cal .cell .g{
+  display:inline-block; min-width:26px; padding:1px 4px; margin-top:2px; border-radius:7px;
+  font-size:.72rem; font-weight:800; color:#fff;
+}
+.cal .cell .g.none{background:none; color:var(--line); font-size:.9rem; font-weight:400}
+.stat-row{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:.9rem}
+.stat-row:last-child{border-bottom:none}
+.stat-row .sname{width:96px; font-weight:600; flex-shrink:0}
+.stat-row .sbar{flex:1; height:7px; border-radius:99px; background:var(--line); overflow:hidden}
+.stat-row .sbar i{display:block; height:100%; background:var(--accent); border-radius:99px}
+.stat-row .sval{width:82px; text-align:right; color:var(--sub); font-variant-numeric:tabular-nums; font-size:.84rem}
+/* ---------- settings ---------- */
+.set-field{margin-bottom:10px}
+.set-field label{display:block; font-size:.8rem; font-weight:700; margin-bottom:4px; color:var(--sub)}
+.set-field input[type=text], .set-field input[type=password]{
+  width:100%; border:1px solid var(--line); background:var(--bg); color:var(--ink);
+  border-radius:10px; padding:9px 10px; font-size:.92rem; font-family:inherit;
+}
+.btn-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.btn{
+  border:1px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:10px; padding:9px 14px; font-size:.88rem; font-weight:600; cursor:pointer;
+}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+.check-row{display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.88rem}
+.gtable{width:100%; border-collapse:collapse; font-size:.85rem; font-variant-numeric:tabular-nums}
+.gtable th,.gtable td{padding:5px 8px; text-align:center; border-bottom:1px solid var(--line)}
+.gtable th{color:var(--sub); font-size:.75rem}
+.note{font-size:.8rem; color:var(--sub); line-height:1.6}
+.note code{background:var(--bg); padding:1px 5px; border-radius:5px; font-size:.78rem}
+/* ---------- toast ---------- */
+#toast{
+  position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px);
+  background:var(--ink); color:var(--bg); padding:9px 18px; border-radius:99px;
+  font-size:.86rem; font-weight:600; opacity:0; pointer-events:none; transition:.25s; z-index:99;
+  max-width:88vw; text-align:center;
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-row">
+    <h1>🎓 하루학점<small>Daily GPA</small></h1>
+    <button id="cloudBtn" title="GitHub에 이번 달 기록 업로드">☁ 업로드</button>
+  </div>
+  <nav>
+    <button data-view="entry" class="on">기록</button>
+    <button data-view="month">성적표</button>
+    <button data-view="settings">설정</button>
+  </nav>
+</header>
+<main id="view"></main>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   하루학점 — 개인 플래너 학점화 (localStorage + GitHub .md 동기화)
+   ============================================================ */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const pad = n => String(n).padStart(2,'0');
+
+const CATS = [
+  {key:'schedule', label:'일정',        emoji:'📅'},
+  {key:'todo',     label:'투두',        emoji:'✅'},
+  {key:'meal',     label:'식단',        emoji:'🍽️'},
+  {key:'exercise', label:'운동',        emoji:'💪'},
+  {key:'nottodo',  label:'NOT TO-DO',  emoji:'🚫'},
+];
+/* [최소 백분율, 등급, 평점] — 한국 대학식 4.5 만점 */
+const GRADE_TABLE = [
+  [95,'A+',4.5],[90,'A0',4.0],[85,'B+',3.5],[80,'B0',3.0],
+  [75,'C+',2.5],[70,'C0',2.0],[65,'D+',1.5],[60,'D0',1.0],[0,'F',0.0],
+];
+const WEEKDAYS = ['일','월','화','수','목','금','토'];
+const DATA_MARK = 'planner-data:v1:';
+
+/* ---------- 날짜 유틸 ---------- */
+const fmtDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayStr = () => fmtDate(new Date());
+const ymOf = date => date.slice(0,7);
+const parseDate = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+const shiftDate = (s,n) => { const d=parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); };
+const shiftYm = (ym,n) => { const [y,m]=ym.split('-').map(Number); const d=new Date(y,m-1+n,1); return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; };
+const dateLabel = s => { const d=parseDate(s); return `${d.getMonth()+1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`; };
+
+/* ---------- 저장소 ---------- */
+const monthKey = ym => 'pg:data:'+ym;
+function loadMonth(ym){
+  try{ return JSON.parse(localStorage.getItem(monthKey(ym))) || {days:{}}; }
+  catch(e){ return {days:{}}; }
+}
+function saveMonth(ym,data){ localStorage.setItem(monthKey(ym), JSON.stringify(data)); }
+function allMonthKeys(){
+  return Object.keys(localStorage).filter(k=>k.startsWith('pg:data:')).map(k=>k.slice(8)).sort();
+}
+function blankEntry(date){
+  const cats={}; CATS.forEach(c=>cats[c.key]={done:0,total:0});
+  return {date, wake:{time:'',ok:null}, sleep:{hours:'',ok:null}, weight:'', cats, kpt:{k:'',p:'',t:''}, updatedAt:0};
+}
+function getEntry(date){
+  const raw = loadMonth(ymOf(date)).days[date];
+  if(!raw) return blankEntry(date);
+  const e = blankEntry(date);
+  Object.assign(e, raw);
+  e.wake = Object.assign({time:'',ok:null}, raw.wake);
+  e.sleep = Object.assign({hours:'',ok:null}, raw.sleep);
+  e.kpt = Object.assign({k:'',p:'',t:''}, raw.kpt);
+  CATS.forEach(c=> e.cats[c.key] = Object.assign({done:0,total:0}, raw.cats && raw.cats[c.key]));
+  return e;
+}
+function updateEntry(date, mutate){
+  const ym = ymOf(date);
+  const data = loadMonth(ym);
+  const e = getEntry(date);
+  mutate(e);
+  e.updatedAt = Date.now();
+  data.days[date] = e;
+  saveMonth(ym, data);
+  markDirty(ym);
+  return e;
+}
+
+/* ---------- 설정 ---------- */
+function settings(){
+  try{ return Object.assign({repo:'',branch:'main',path:'data',token:'',autoPush:true},
+        JSON.parse(localStorage.getItem('pg:settings')||'{}')); }
+  catch(e){ return {repo:'',branch:'main',path:'data',token:'',autoPush:true}; }
+}
+function saveSettings(patch){
+  localStorage.setItem('pg:settings', JSON.stringify(Object.assign(settings(), patch)));
+  renderCloudBtn();
+}
+
+/* ---------- 채점 ---------- */
+function gradeOf(entry){
+  const parts=[];
+  if(entry.wake.ok!==null) parts.push(entry.wake.ok?1:0);
+  if(entry.sleep.ok!==null) parts.push(entry.sleep.ok?1:0);
+  CATS.forEach(c=>{
+    const {done,total}=entry.cats[c.key];
+    if(total>0) parts.push(Math.min(done,total)/total);
+  });
+  if(!parts.length) return null;
+  const pct = parts.reduce((a,b)=>a+b,0)/parts.length*100;
+  const row = GRADE_TABLE.find(([min])=>pct>=min);
+  return {pct, letter:row[1], points:row[2]};
+}
+function gradeColor(letter){
+  if(!letter) return 'var(--line)';
+  const c=letter[0];
+  return c==='A'?'var(--gA)':c==='B'?'var(--gB)':c==='C'?'var(--gC)':c==='D'?'var(--gD)':'var(--gF)';
+}
+function monthStats(ym){
+  const days = loadMonth(ym).days;
+  const graded=[]; const catAgg={}; CATS.forEach(c=>catAgg[c.key]={done:0,total:0});
+  let wakeOk=0, wakeAll=0, sleepOk=0, sleepAll=0;
+  const weights=[];
+  Object.keys(days).sort().forEach(date=>{
+    const e=getEntry(date);
+    const g=gradeOf(e);
+    if(g) graded.push({date,g});
+    CATS.forEach(c=>{ catAgg[c.key].done+=Math.min(e.cats[c.key].done,e.cats[c.key].total); catAgg[c.key].total+=e.cats[c.key].total; });
+    if(e.wake.ok!==null){ wakeAll++; if(e.wake.ok) wakeOk++; }
+    if(e.sleep.ok!==null){ sleepAll++; if(e.sleep.ok) sleepOk++; }
+    if(e.weight!=='' && !isNaN(+e.weight)) weights.push({date, w:+e.weight});
+  });
+  const gpa = graded.length ? graded.reduce((a,x)=>a+x.g.points,0)/graded.length : null;
+  const avgPct = graded.length ? graded.reduce((a,x)=>a+x.g.pct,0)/graded.length : null;
+  return {graded, gpa, avgPct, catAgg, wakeOk, wakeAll, sleepOk, sleepAll, weights};
+}
+
+/* ---------- 상태 ---------- */
+const state = { view:'entry', date:todayStr(), month:ymOf(todayStr()) };
+const dirtyMonths = new Set();
+let pushTimer=null;
+function markDirty(ym){
+  dirtyMonths.add(ym);
+  renderCloudBtn();
+  const s=settings();
+  if(s.autoPush && s.repo && s.token){
+    clearTimeout(pushTimer);
+    pushTimer=setTimeout(()=>pushDirty(true), 4000);
+  }
+}
+
+/* ---------- toast ---------- */
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   GitHub 동기화 (contents API, .md 파일)
+   ============================================================ */
+const b64encode = str => {
+  const bytes = new TextEncoder().encode(str);
+  let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin);
+};
+const b64decode = b64 => {
+  const bin = atob(b64.replace(/\s/g,''));
+  const bytes = Uint8Array.from(bin, ch=>ch.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+};
+function ghUrl(fname){
+  const s=settings();
+  const parts=[...(s.path? s.path.split('/').filter(Boolean):[]), fname];
+  return `https://api.github.com/repos/${s.repo}/contents/${parts.map(encodeURIComponent).join('/')}`;
+}
+async function ghGet(fname){
+  const s=settings();
+  const r=await fetch(ghUrl(fname)+`?ref=${encodeURIComponent(s.branch)}`,{
+    headers:{Authorization:`Bearer ${s.token}`, Accept:'application/vnd.github+json'}
+  });
+  if(r.status===404) return null;
+  if(!r.ok) throw new Error(`GitHub GET ${r.status}`);
+  return r.json();
+}
+async function ghPut(fname, content, sha, message){
+  const s=settings();
+  const body={message, content:b64encode(content), branch:s.branch};
+  if(sha) body.sha=sha;
+  const r=await fetch(ghUrl(fname),{
+    method:'PUT',
+    headers:{Authorization:`Bearer ${s.token}`, Accept:'application/vnd.github+json'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok){
+    const t=await r.text().catch(()=> '');
+    throw new Error(`GitHub PUT ${r.status} ${t.slice(0,120)}`);
+  }
+  return r.json();
+}
+
+/* ---------- .md 생성/파싱 ---------- */
+function entryMd(e){
+  const g=gradeOf(e);
+  const lines=[];
+  lines.push(`## ${e.date} (${WEEKDAYS[parseDate(e.date).getDay()]})${g?` — **${g.letter}** (${g.points.toFixed(1)} / ${g.pct.toFixed(0)}%)`:''}`);
+  const morning=[];
+  if(e.wake.ok!==null||e.wake.time) morning.push(`기상 ${e.wake.time||'-'} ${e.wake.ok===null?'':e.wake.ok?'✅':'❌'}`);
+  if(e.sleep.ok!==null||e.sleep.hours!=='') morning.push(`수면 ${e.sleep.hours!==''?e.sleep.hours+'h':'-'} ${e.sleep.ok===null?'':e.sleep.ok?'✅':'❌'}`);
+  if(e.weight!=='') morning.push(`몸무게 ${e.weight}kg`);
+  if(morning.length) lines.push(`- ${morning.join(' · ')}`);
+  const cats=CATS.filter(c=>e.cats[c.key].total>0)
+    .map(c=>`${c.label} ${Math.min(e.cats[c.key].done,e.cats[c.key].total)}/${e.cats[c.key].total}`);
+  if(cats.length) lines.push(`- ${cats.join(' · ')}`);
+  const kpt=[];
+  if(e.kpt.k.trim()) kpt.push(`  - **K**: ${e.kpt.k.trim().replace(/\n/g,' / ')}`);
+  if(e.kpt.p.trim()) kpt.push(`  - **P**: ${e.kpt.p.trim().replace(/\n/g,' / ')}`);
+  if(e.kpt.t.trim()) kpt.push(`  - **T**: ${e.kpt.t.trim().replace(/\n/g,' / ')}`);
+  if(kpt.length){ lines.push('- KPT'); lines.push(...kpt); }
+  return lines.join('\n');
+}
+function monthMd(ym){
+  const data=loadMonth(ym);
+  const st=monthStats(ym);
+  const out=[`# ${ym} 플래너 성적표`,''];
+  if(st.gpa!==null){
+    out.push(`> **월 평점 ${st.gpa.toFixed(2)} / 4.5** · 평균 달성률 ${st.avgPct.toFixed(0)}% · 기록 ${st.graded.length}일`,'');
+  }
+  Object.keys(data.days).sort().forEach(date=>{ out.push(entryMd(getEntry(date)),''); });
+  out.push('---');
+  out.push(`<!-- ${DATA_MARK}${b64encode(JSON.stringify(data))} -->`);
+  out.push('');
+  return out.join('\n');
+}
+function parseMonthMd(text){
+  const m=text.match(new RegExp(DATA_MARK.replace(/[:]/g,'\\$&')+'([A-Za-z0-9+/=\\s]+?)\\s*-->'));
+  if(!m) return null;
+  try{ return JSON.parse(b64decode(m[1])); }catch(e){ return null; }
+}
+function mergeMonth(ym, incoming){
+  if(!incoming || !incoming.days) return 0;
+  const data=loadMonth(ym);
+  let changed=0;
+  Object.keys(incoming.days).forEach(date=>{
+    const local=data.days[date], remote=incoming.days[date];
+    if(!local || (remote.updatedAt||0) > (local.updatedAt||0)){ data.days[date]=remote; changed++; }
+  });
+  if(changed) saveMonth(ym,data);
+  return changed;
+}
+
+/* ---------- push / pull ---------- */
+async function pushMonth(ym){
+  const fname=`${ym}.md`;
+  const existing=await ghGet(fname);
+  await ghPut(fname, monthMd(ym), existing && existing.sha, `planner: ${ym} 기록 업데이트`);
+  dirtyMonths.delete(ym);
+  renderCloudBtn();
+}
+async function pushDirty(silent){
+  const s=settings();
+  if(!s.repo||!s.token){ if(!silent) toast('설정에서 GitHub 저장소와 토큰을 먼저 입력하세요'); return; }
+  const targets=dirtyMonths.size?[...dirtyMonths]:[state.month];
+  try{
+    for(const ym of targets) await pushMonth(ym);
+    toast(`☁ GitHub 업로드 완료 (${targets.join(', ')})`);
+  }catch(err){ toast('업로드 실패: '+err.message); }
+}
+async function pullMonth(ym, silent){
+  const s=settings();
+  if(!s.repo||!s.token){ if(!silent) toast('설정에서 GitHub 저장소와 토큰을 먼저 입력하세요'); return; }
+  try{
+    const f=await ghGet(`${ym}.md`);
+    if(!f){ if(!silent) toast(`${ym}.md 파일이 아직 저장소에 없어요`); return; }
+    const n=mergeMonth(ym, parseMonthMd(b64decode(f.content)));
+    if(!silent) toast(n?`${ym}: ${n}일치 기록을 불러왔어요`:`${ym}: 이미 최신 상태예요`);
+    if(n) render();
+  }catch(err){ if(!silent) toast('불러오기 실패: '+err.message); }
+}
+
+/* ============================================================
+   렌더링
+   ============================================================ */
+function render(){
+  $$('nav button').forEach(b=>b.classList.toggle('on', b.dataset.view===state.view));
+  if(state.view==='entry') renderEntry();
+  else if(state.view==='month') renderMonth();
+  else renderSettings();
+  renderCloudBtn();
+}
+function renderCloudBtn(){
+  const s=settings();
+  const btn=$('#cloudBtn');
+  btn.style.display = (s.repo&&s.token)?'block':'none';
+  btn.classList.toggle('dirty', dirtyMonths.size>0);
+  btn.textContent = dirtyMonths.size>0 ? '☁ 업로드 ●' : '☁ 업로드';
+}
+
+/* ---------- 기록 뷰 ---------- */
+function segBtns(kind, ok){
+  return `<div class="seg">
+    <button data-act="${kind}-ok" data-v="1" class="${ok===true?'ok':''}">성공</button>
+    <button data-act="${kind}-ok" data-v="0" class="${ok===false?'no':''}">실패</button>
+    <button data-act="${kind}-ok" data-v="" class="">–</button>
+  </div>`;
+}
+function renderEntry(){
+  const e=getEntry(state.date);
+  const g=gradeOf(e);
+  const catHtml=CATS.map(c=>{
+    const {done,total}=e.cats[c.key];
+    const dots=Array.from({length:total},(_,i)=>
+      `<button class="dot ${i<done?'on':''}" data-act="dot" data-cat="${c.key}" data-i="${i+1}">${i+1}</button>`).join('');
+    return `<div class="cat ${total===0?'empty':''}">
+      <div class="cat-head">
+        <span>${c.emoji}</span><span class="name">${c.label}</span>
+        <span class="score">${total>0?`<b>${Math.min(done,total)}</b> / ${total}`:'항목 없음'}</span>
+        <div class="stepper">
+          <button data-act="total" data-cat="${c.key}" data-d="-1">−</button>
+          <button data-act="total" data-cat="${c.key}" data-d="1">＋</button>
+        </div>
+      </div>
+      <div class="dots">${dots}</div>
+    </div>`;
+  }).join('');
+
+  $('#view').innerHTML=`
+  <div class="datebar">
+    <button data-act="date-shift" data-d="-1">‹</button>
+    <span class="dlabel">${dateLabel(state.date)}</span>
+    <button data-act="date-shift" data-d="1">›</button>
+    <button class="today-btn" data-act="date-today">오늘</button>
+  </div>
+
+  <div class="card">
+    <div class="grade-hero">
+      <div class="grade-badge" style="background:${gradeColor(g&&g.letter)}">${g?g.letter:'–'}</div>
+      <div class="grade-meta">
+        <div class="pct">${g?`${g.pct.toFixed(0)}% · 평점 ${g.points.toFixed(1)}`:'아직 채점할 항목이 없어요'}</div>
+        <div class="sub">${g?'오늘의 학점':'＋ 버튼으로 항목 개수를 정하고, 지킨 만큼 눌러 보세요'}</div>
+        <div class="grade-bar"><i style="width:${g?g.pct:0}%; background:${gradeColor(g&&g.letter)}"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>아침 체크</h2>
+    <div class="mrow">
+      <span class="mlabel">⏰ 기상</span>
+      <input type="time" id="wakeTime" value="${e.wake.time}">
+      ${segBtns('wake', e.wake.ok)}
+    </div>
+    <div class="mrow">
+      <span class="mlabel">😴 수면</span>
+      <input type="number" id="sleepHours" step="0.5" min="0" max="24" placeholder="시간" value="${e.sleep.hours}">
+      ${segBtns('sleep', e.sleep.ok)}
+    </div>
+    <div class="mrow">
+      <span class="mlabel">⚖️ 몸무게</span>
+      <input type="number" id="weight" step="0.1" min="0" placeholder="kg" value="${e.weight}">
+      <span style="margin-left:auto; color:var(--sub); font-size:.8rem">기록용 (채점 제외)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>오늘의 과목</h2>
+    ${catHtml}
+    <div class="hint">＋/− 로 오늘의 항목 개수를 정하고, 지킨 개수만큼 번호를 누르세요. 개수 0인 과목은 채점에서 빠집니다.</div>
+  </div>
+
+  <div class="card kpt">
+    <h2>회고 KPT <span style="font-weight:400">(기록용, 채점 제외)</span></h2>
+    <label>✔ Keep — 잘한 것, 계속할 것</label>
+    <textarea id="kptK">${escHtml(e.kpt.k)}</textarea>
+    <label>⚠ Problem — 아쉬웠던 것</label>
+    <textarea id="kptP">${escHtml(e.kpt.p)}</textarea>
+    <label>🚀 Try — 내일 시도할 것</label>
+    <textarea id="kptT">${escHtml(e.kpt.t)}</textarea>
+  </div>`;
+
+  /* 텍스트/숫자 입력: change 시 저장(리렌더 없음) */
+  $('#wakeTime').addEventListener('change', ev=>updateEntry(state.date, x=>x.wake.time=ev.target.value));
+  $('#sleepHours').addEventListener('change', ev=>updateEntry(state.date, x=>x.sleep.hours=ev.target.value));
+  $('#weight').addEventListener('change', ev=>updateEntry(state.date, x=>x.weight=ev.target.value));
+  $('#kptK').addEventListener('change', ev=>updateEntry(state.date, x=>x.kpt.k=ev.target.value));
+  $('#kptP').addEventListener('change', ev=>updateEntry(state.date, x=>x.kpt.p=ev.target.value));
+  $('#kptT').addEventListener('change', ev=>updateEntry(state.date, x=>x.kpt.t=ev.target.value));
+}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------- 성적표 뷰 ---------- */
+function renderMonth(){
+  const ym=state.month;
+  const st=monthStats(ym);
+  const [y,m]=ym.split('-').map(Number);
+  const first=new Date(y,m-1,1), daysInMonth=new Date(y,m,0).getDate();
+  const today=todayStr();
+
+  let cells=''; let day=1-first.getDay();
+  let rows='';
+  while(day<=daysInMonth){
+    cells='';
+    for(let i=0;i<7;i++,day++){
+      if(day<1||day>daysInMonth){ cells+='<td></td>'; continue; }
+      const date=`${ym}-${pad(day)}`;
+      const e=loadMonth(ym).days[date];
+      const g=e?gradeOf(getEntry(date)):null;
+      const hasAny=e && !g;
+      cells+=`<td><div class="cell ${date===today?'today':''}" data-act="cal-day" data-date="${date}">
+        <div class="d">${day}</div>
+        ${g?`<span class="g" style="background:${gradeColor(g.letter)}">${g.letter}</span>`
+           :`<span class="g none">${hasAny?'·':' '}</span>`}
+      </div></td>`;
+    }
+    rows+=`<tr>${cells}</tr>`;
+  }
+
+  const catRows=CATS.map(c=>{
+    const {done,total}=st.catAgg[c.key];
+    const pct=total>0?done/total*100:null;
+    return `<div class="stat-row">
+      <span class="sname">${c.emoji} ${c.label}</span>
+      <div class="sbar"><i style="width:${pct||0}%"></i></div>
+      <span class="sval">${total>0?`${done}/${total} · ${pct.toFixed(0)}%`:'–'}</span>
+    </div>`;
+  }).join('');
+  const wakeRow=st.wakeAll>0?`<div class="stat-row"><span class="sname">⏰ 기상</span><div class="sbar"><i style="width:${st.wakeOk/st.wakeAll*100}%"></i></div><span class="sval">${st.wakeOk}/${st.wakeAll} · ${(st.wakeOk/st.wakeAll*100).toFixed(0)}%</span></div>`:'';
+  const sleepRow=st.sleepAll>0?`<div class="stat-row"><span class="sname">😴 수면</span><div class="sbar"><i style="width:${st.sleepOk/st.sleepAll*100}%"></i></div><span class="sval">${st.sleepOk}/${st.sleepAll} · ${(st.sleepOk/st.sleepAll*100).toFixed(0)}%</span></div>`:'';
+
+  let weightNote='';
+  if(st.weights.length>=2){
+    const a=st.weights[0], b=st.weights[st.weights.length-1];
+    const diff=b.w-a.w;
+    weightNote=`<div class="hint">⚖️ 몸무게 ${a.w}kg → ${b.w}kg (${diff>0?'+':''}${diff.toFixed(1)}kg)</div>`;
+  }else if(st.weights.length===1){
+    weightNote=`<div class="hint">⚖️ 몸무게 ${st.weights[0].w}kg (1회 기록)</div>`;
+  }
+
+  $('#view').innerHTML=`
+  <div class="datebar">
+    <button data-act="month-shift" data-d="-1">‹</button>
+    <span class="dlabel">${y}년 ${m}월</span>
+    <button data-act="month-shift" data-d="1">›</button>
+  </div>
+
+  <div class="card gpa-hero">
+    <div class="big">${st.gpa!==null?st.gpa.toFixed(2):'–'}<small> / 4.5</small></div>
+    <div class="lg" style="color:${gradeColor(st.avgPct!==null?GRADE_TABLE.find(([min])=>st.avgPct>=min)[1]:null)}">
+      ${st.avgPct!==null?`평균 ${st.avgPct.toFixed(0)}% · ${GRADE_TABLE.find(([min])=>st.avgPct>=min)[1]}`:'아직 기록이 없어요'}
+    </div>
+    <div class="sub">${st.graded.length}일 채점됨 · ${ym}</div>
+  </div>
+
+  <div class="card">
+    <h2>달력</h2>
+    <table class="cal">
+      <tr>${WEEKDAYS.map(w=>`<th>${w}</th>`).join('')}</tr>
+      ${rows}
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>과목별 성적</h2>
+    ${wakeRow}${sleepRow}${catRows}
+    ${weightNote}
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" data-act="export-md">📄 이번 달 .md 내려받기</button>
+    <button class="btn" data-act="push-month">☁ GitHub 업로드</button>
+    <button class="btn" data-act="pull-month">⤓ GitHub에서 불러오기</button>
+  </div>`;
+}
+
+/* ---------- 설정 뷰 ---------- */
+function renderSettings(){
+  const s=settings();
+  $('#view').innerHTML=`
+  <div class="card">
+    <h2>GitHub 동기화 (.md 기록 저장)</h2>
+    <div class="set-field"><label>데이터 저장소 (owner/repo — 비공개 저장소 추천)</label>
+      <input type="text" id="setRepo" placeholder="username/planner-data" value="${escHtml(s.repo)}"></div>
+    <div class="set-field"><label>브랜치</label>
+      <input type="text" id="setBranch" value="${escHtml(s.branch)}"></div>
+    <div class="set-field"><label>폴더 경로 (비우면 저장소 루트)</label>
+      <input type="text" id="setPath" value="${escHtml(s.path)}"></div>
+    <div class="set-field"><label>Fine-grained 토큰 (Contents Read/Write · 이 브라우저에만 저장됨)</label>
+      <input type="password" id="setToken" placeholder="github_pat_..." value="${escHtml(s.token)}"></div>
+    <label class="check-row"><input type="checkbox" id="setAuto" ${s.autoPush?'checked':''}> 기록 수정 후 자동 업로드</label>
+    <div class="btn-row">
+      <button class="btn primary" data-act="gh-test">연결 테스트</button>
+      <button class="btn" data-act="push-month">☁ 이번 달 업로드</button>
+      <button class="btn" data-act="pull-month">⤓ 이번 달 불러오기</button>
+    </div>
+    <p class="note" style="margin-top:12px">토큰 만들기: GitHub → Settings → Developer settings → Fine-grained tokens →
+    데이터 저장소 1개만 선택 → Permissions에서 <code>Contents: Read and write</code>. 토큰은 이 브라우저의 localStorage에만 저장됩니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>데이터</h2>
+    <div class="btn-row">
+      <button class="btn" data-act="export-md">📄 이번 달 .md 내려받기</button>
+      <button class="btn" data-act="import-md">📂 .md 파일 가져오기</button>
+      <button class="btn" data-act="backup-json">💾 전체 백업 (.json)</button>
+      <button class="btn" data-act="restore-json">♻️ 백업 복원</button>
+    </div>
+    <p class="note" style="margin-top:10px">기록 있는 달: ${allMonthKeys().join(', ')||'없음'}</p>
+    <input type="file" id="filePick" accept=".md,.json" style="display:none">
+  </div>
+
+  <div class="card">
+    <h2>등급 기준 (항목별 달성률 평균)</h2>
+    <table class="gtable">
+      <tr><th>달성률</th><th>등급</th><th>평점</th></tr>
+      ${GRADE_TABLE.map(([min,l,p],i)=>{
+        const max=i===0?100:GRADE_TABLE[i-1][0]-1;
+        return `<tr><td>${i===GRADE_TABLE.length-1?`${max}% 미만`:`${min}–${max===100?100:max}%`}</td>
+        <td style="color:${gradeColor(l)};font-weight:800">${l}</td><td>${p.toFixed(1)}</td></tr>`;
+      }).join('')}
+    </table>
+    <p class="note" style="margin-top:10px">기상·수면은 성공=100%/실패=0%, 나머지는 지킨 개수 ÷ 전체 개수.
+    입력하지 않은 과목은 그날 채점에서 제외됩니다. 몸무게·KPT는 기록만 하고 채점하지 않아요.</p>
+  </div>`;
+
+  $('#setRepo').addEventListener('change', ev=>saveSettings({repo:ev.target.value.trim()}));
+  $('#setBranch').addEventListener('change', ev=>saveSettings({branch:ev.target.value.trim()||'main'}));
+  $('#setPath').addEventListener('change', ev=>saveSettings({path:ev.target.value.trim().replace(/^\/+|\/+$/g,'')}));
+  $('#setToken').addEventListener('change', ev=>saveSettings({token:ev.target.value.trim()}));
+  $('#setAuto').addEventListener('change', ev=>saveSettings({autoPush:ev.target.checked}));
+}
+
+/* ---------- 파일 내보내기/가져오기 ---------- */
+function download(fname, text, mime){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:mime||'text/plain'}));
+  a.download=fname; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+}
+function pickFile(cb){
+  const inp=$('#filePick')||Object.assign(document.createElement('input'),{type:'file'});
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f) return;
+    const r=new FileReader(); r.onload=()=>cb(f.name, r.result); r.readAsText(f); inp.value=''; };
+  inp.click();
+}
+function backupJson(){
+  const dump={settings:Object.assign(settings(),{token:''}), months:{}};
+  allMonthKeys().forEach(ym=>dump.months[ym]=loadMonth(ym));
+  download(`planner-backup-${todayStr()}.json`, JSON.stringify(dump,null,2), 'application/json');
+}
+function restoreJson(text){
+  try{
+    const dump=JSON.parse(text);
+    let n=0;
+    Object.keys(dump.months||{}).forEach(ym=>{ n+=mergeMonth(ym, dump.months[ym]); });
+    toast(`${n}일치 기록을 복원했어요`); render();
+  }catch(e){ toast('복원 실패: 올바른 백업 파일이 아니에요'); }
+}
+
+/* ============================================================
+   이벤트
+   ============================================================ */
+$$('nav button').forEach(b=>b.addEventListener('click',()=>{ state.view=b.dataset.view; render(); }));
+$('#cloudBtn').addEventListener('click', ()=>pushDirty(false));
+
+document.querySelector('main').addEventListener('click', ev=>{
+  const el=ev.target.closest('[data-act]');
+  if(!el) return;
+  const act=el.dataset.act;
+
+  if(act==='date-shift'){ state.date=shiftDate(state.date,+el.dataset.d); renderEntry(); }
+  else if(act==='date-today'){ state.date=todayStr(); renderEntry(); }
+  else if(act==='wake-ok'||act==='sleep-ok'){
+    const v=el.dataset.v===''?null:el.dataset.v==='1';
+    const kind=act.split('-')[0];
+    updateEntry(state.date, x=>x[kind].ok = (x[kind].ok===v?null:v));
+    renderEntry();
+  }
+  else if(act==='total'){
+    const cat=el.dataset.cat, d=+el.dataset.d;
+    updateEntry(state.date, x=>{
+      const c=x.cats[cat];
+      c.total=Math.max(0, Math.min(30, c.total+d));
+      c.done=Math.min(c.done, c.total);
+    });
+    renderEntry();
+  }
+  else if(act==='dot'){
+    const cat=el.dataset.cat, i=+el.dataset.i;
+    updateEntry(state.date, x=>{
+      const c=x.cats[cat];
+      c.done = (c.done===i)? i-1 : i;   // 같은 번호 다시 누르면 하나 취소
+    });
+    renderEntry();
+  }
+  else if(act==='month-shift'){ state.month=shiftYm(state.month,+el.dataset.d); renderMonth(); }
+  else if(act==='cal-day'){ state.date=el.dataset.date; state.view='entry'; render(); }
+  else if(act==='export-md'){ download(`${state.month}.md`, monthMd(state.month), 'text/markdown'); }
+  else if(act==='push-month'){ dirtyMonths.add(state.month); pushDirty(false); }
+  else if(act==='pull-month'){ pullMonth(state.month, false); }
+  else if(act==='gh-test'){
+    (async()=>{
+      const s=settings();
+      if(!s.repo||!s.token) return toast('저장소와 토큰을 입력하세요');
+      try{
+        const r=await fetch(`https://api.github.com/repos/${s.repo}`,{headers:{Authorization:`Bearer ${s.token}`}});
+        toast(r.ok?'✅ 연결 성공!':'❌ 연결 실패: '+r.status+(r.status===404?' (저장소 이름 또는 토큰 권한 확인)':''));
+      }catch(e){ toast('❌ 연결 실패: '+e.message); }
+    })();
+  }
+  else if(act==='backup-json'){ backupJson(); }
+  else if(act==='import-md'){
+    pickFile((name,text)=>{
+      const data=parseMonthMd(text);
+      if(!data) return toast('.md 안에서 데이터 블록을 찾지 못했어요');
+      const dates=Object.keys(data.days||{});
+      if(!dates.length) return toast('기록이 비어 있어요');
+      const n=mergeMonth(ymOf(dates[0]), data);
+      toast(`${n}일치 기록을 가져왔어요`); render();
+    });
+  }
+  else if(act==='restore-json'){ pickFile((name,text)=>restoreJson(text)); }
+});
+
+/* ---------- 시작 ---------- */
+render();
+(function initialSync(){
+  const s=settings();
+  if(s.repo&&s.token){
+    pullMonth(state.month, true);
+    pullMonth(shiftYm(state.month,-1), true);
+  }
+})();
+</script>
+</body>
+</html>
