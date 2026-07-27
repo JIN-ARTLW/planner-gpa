@@ -38,8 +38,6 @@ main{
   max-width:560px; margin:0 auto;
   padding:max(14px, env(safe-area-inset-top)) 16px calc(84px + env(safe-area-inset-bottom));
 }
-.big-title{font-size:2rem; font-weight:800; letter-spacing:-.03em; margin:6px 2px 14px}
-.big-title small{font-size:.76rem; font-weight:600; color:var(--sub); margin-left:8px; letter-spacing:0}
 .group-label{
   font-size:.76rem; font-weight:600; color:var(--sub); text-transform:uppercase;
   letter-spacing:.04em; margin:20px 16px 7px;
@@ -603,7 +601,6 @@ function renderEntry(){
   </div>`:'';
 
   $('#view').innerHTML=`
-  <div class="big-title">🎓 하루학점<small>Daily GPA</small></div>
   ${lockCard}
   <div class="datebar">
     <button data-act="date-shift" data-d="-1">‹</button>
@@ -673,7 +670,6 @@ function renderMonth(){
   }).join('');
 
   $('#view').innerHTML=`
-  <div class="big-title">📊 성적표</div>
   <div class="datebar">
     <button data-act="month-shift" data-d="-1">‹</button>
     <span class="dlabel">${y}년 ${m}월</span>
@@ -711,9 +707,7 @@ function renderMonth(){
 function renderSettings(){
   const s=settings();
   $('#view').innerHTML=`
-  <div class="big-title">⚙️ 설정</div>
-
-  <div class="group-label">저장 방식</div>
+  <div class="group-label" style="margin-top:4px">저장 방식</div>
   <p class="note" style="margin-top:2px">기본은 <b>이 기기에만 저장</b>이에요. ⚠️ 시크릿 모드는 탭을 닫으면 기기 기록이 사라지니,
   시크릿 전용이라면 아래 동기화를 <b>한 번만</b> 연결하고 <b>"북마크 URL 복사"</b>로 만든 북마크로 여세요 —
   열 때 자동 불러오기 + 입력 즉시 자동 저장(탭을 닫는 순간에도 저장). 이후 관리할 건 없습니다.</p>
