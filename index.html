@@ -10,7 +10,7 @@
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
 <title>하루학점 · Daily GPA</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23007aff'/><text x='50' y='68' font-size='52' text-anchor='middle'>🎓</text></svg>">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{
   --bg:#f2f2f7; --card:#ffffff; --ink:#000000; --sub:#8a8a8e; --line:#e5e5ea;
@@ -27,7 +27,8 @@
   }
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
-html{font-size:17px; -webkit-text-size-adjust:100%}
+html{font-size:17px; -webkit-text-size-adjust:100%; touch-action:manipulation}
+button{touch-action:manipulation; -webkit-user-select:none; user-select:none}
 body{
   margin:0; background:var(--bg); color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;
