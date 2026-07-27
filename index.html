@@ -222,7 +222,7 @@ const CATS = [
   {key:'todo',     label:'투두',       emoji:'✅'},
   {key:'meal',     label:'식단',       emoji:'🍽️'},
   {key:'exercise', label:'운동',       emoji:'💪'},
-  {key:'nottodo',  label:'NOT TO-DO', emoji:'🚫'},
+  {key:'nottodo',  label:'하지 말 것', emoji:'🚫'},
 ];
 /* 가중치 소비 순서 고정 (같은 날짜 = 같은 가중치, 기기 무관) */
 const WEIGHT_ORDER = ['wake','sleep','schedule','todo','meal','exercise','nottodo'];
@@ -318,19 +318,23 @@ function dayRng(date){
 }
 function gradeOf(entry){
   const rnd = dayRng(entry.date);
-  const w = {}; WEIGHT_ORDER.forEach(k=> w[k] = 0.6 + rnd()*0.9);   /* 0.6 ~ 1.5 */
-  const curve = 1.12 + rnd()*0.28;                                   /* 1.12 ~ 1.40 */
-  let ws=0, sum=0, n=0;
+  const w = {}; WEIGHT_ORDER.forEach(k=> w[k] = 0.3 + rnd()*1.9);   /* 0.3 ~ 2.2 (최대 7배 차) */
+  const curve = 1.1 + rnd()*0.7;                                     /* 난이도 커브 1.1 ~ 1.8 */
+  const mixA  = 0.55 + rnd()*0.3;                                    /* 최약 과목 반영 비율 */
+  const cutJit= Math.floor(rnd()*4);                                 /* 등급컷 0~3점 상향 */
+  let ws=0, sum=0; const ratios=[];
   BIN_KEYS.forEach(k=>{
-    if(entry[k]!==null){ ws+=w[k]; sum+=w[k]*(entry[k]?1:0); n++; }
+    if(entry[k]!==null){ const r=entry[k]?1:0; ws+=w[k]; sum+=w[k]*r; ratios.push(r); }
   });
   CATS.forEach(c=>{
     const {done,total}=entry.cats[c.key];
-    if(total>0){ ws+=w[c.key]; sum+=w[c.key]*Math.min(done,total)/total; n++; }
+    if(total>0){ const r=Math.min(done,total)/total; ws+=w[c.key]; sum+=w[c.key]*r; ratios.push(r); }
   });
-  if(!n) return null;
-  const pct = Math.pow(sum/ws, curve)*100;
-  const row = GRADE_TABLE.find(([min])=>pct>=min);
+  if(!ratios.length) return null;
+  /* 가중 평균 × 최약 과목 페널티 × 난이도 커브 — 전부 지키면 정확히 100 */
+  const mixed = mixA*(sum/ws) + (1-mixA)*Math.min(...ratios);
+  const pct = Math.pow(mixed, curve)*100;
+  const row = GRADE_TABLE.find(([min,l])=> l==='F' || pct >= min+cutJit);
   return {pct, letter:row[1], points:row[2]};
 }
 function gradeColor(letter){
@@ -643,7 +647,7 @@ function renderMonth(){
   <div class="card btn-list">
     ${settings().token?`<button data-act="push-month">☁️ 이번 달 GitHub에 저장</button>
     <button data-act="pull-month">⤵️ GitHub에서 불러오기</button>`:''}
-    <button data-act="export-md">📄 이번 달 .md 내려받기</button>
+    <button data-act="export-img">🖼️ 이번 달 이미지로 저장</button>
   </div>`;
 }
 
@@ -680,7 +684,7 @@ function renderSettings(){
 
   <div class="group-label">데이터</div>
   <div class="card btn-list">
-    <button data-act="export-md">📄 이번 달 .md 내려받기</button>
+    <button data-act="export-img">🖼️ 이번 달 이미지로 저장</button>
     <button data-act="import-md">📂 .md 파일 가져오기</button>
     <button data-act="backup-json">💾 전체 백업 (.json)</button>
     <button data-act="restore-json">♻️ 백업 복원</button>
@@ -699,8 +703,9 @@ function renderSettings(){
       }).join('')}
     </table>
   </div>
-  <p class="note">점수는 과목별 달성률에 <b>날마다 바뀌는 비공개 가중치와 난이도 커브</b>를 적용해 산출됩니다.
-  어떤 과목이 그날 크게 반영될지는 알 수 없어요. 다만 <b>전부 지키면 언제나 A+</b>입니다. 🤫<br>
+  <p class="note">점수는 <b>날마다 뒤바뀌는 비공개 가중치(과목 간 최대 7배 차)</b> ×
+  <b>그날의 최약 과목 페널티</b> × <b>난이도 커브</b>로 산출되고, <b>등급컷도 매일 몰래 최대 3점 올라갑니다</b>.
+  계산하려 들지 마세요, 못 합니다. 확실한 건 하나 — <b>전부 지키면 무조건 A+(4.5)</b>. 🤫<br>
   기상·수면은 성공 100% / 실패 0%, 나머지는 지킨 개수 ÷ 전체 개수. 개수 0인 과목은 그날 채점에서 제외.</p>`;
 
   $('#setRepo').addEventListener('change', ev=>saveSettings({repo:ev.target.value.trim()}));
@@ -708,6 +713,115 @@ function renderSettings(){
   $('#setPath').addEventListener('change', ev=>saveSettings({path:ev.target.value.trim().replace(/^\/+|\/+$/g,'')}));
   $('#setToken').addEventListener('change', ev=>saveSettings({token:ev.target.value.trim()}));
   $('#setAuto').addEventListener('change', ev=>saveSettings({autoPush:ev.target.checked}));
+}
+
+/* ---------- 월간 성적표 이미지 ---------- */
+const GRADE_HEX={A:'#30d158',B:'#0a84ff',C:'#ffd60a',D:'#ff9f0a',F:'#ff453a'};
+function buildMonthCanvas(ym){
+  const st=monthStats(ym);
+  const [y,m]=ym.split('-').map(Number);
+  const first=new Date(y,m-1,1), dim=new Date(y,m,0).getDate();
+  const days=loadMonth(ym).days;
+  const weeks=Math.ceil((first.getDay()+dim)/7);
+
+  const W=1080, P=56;
+  const FT=(wgt,px)=>`${wgt} ${px}px -apple-system,"Apple SD Gothic Neo","Pretendard",sans-serif`;
+  const heroH=232;
+  const calHeadH=64, calRowH=112, calH=calHeadH+weeks*calRowH+26;
+  const statRows=[
+    ...BINS.map(b=>{const a=st.binAgg[b.key]; return {label:`${b.emoji} ${b.label}`, pct:a.all?a.ok/a.all*100:null, txt:a.all?`${a.ok}/${a.all}`:''};}),
+    ...CATS.map(c=>{const a=st.catAgg[c.key]; return {label:`${c.emoji} ${c.label}`, pct:a.total?a.done/a.total*100:null, txt:a.total?`${a.done}/${a.total}`:''};}),
+  ];
+  const statRowH=58, statH=78+statRows.length*statRowH+14;
+  const H=230+heroH+36+calH+36+statH+92;
+
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x=cv.getContext('2d');
+  x.fillStyle='#0c0c0e'; x.fillRect(0,0,W,H);
+
+  /* 헤더 */
+  x.textAlign='left';
+  x.fillStyle='#98989e'; x.font=FT(600,30); x.fillText('🎓 하루학점 · Daily GPA', P, 96);
+  x.fillStyle='#ffffff'; x.font=FT(800,60); x.fillText(`${y}년 ${m}월 성적표`, P, 180);
+
+  const card=(cy,ch)=>{ x.fillStyle='#1c1c1e'; x.beginPath(); x.roundRect(P,cy,W-2*P,ch,28); x.fill(); };
+  let top=230;
+
+  /* GPA 히어로 */
+  card(top,heroH);
+  const cx=W/2;
+  const gpaTxt=st.gpa!==null?st.gpa.toFixed(2):'–';
+  x.font=FT(800,104); const gw=x.measureText(gpaTxt).width;
+  x.font=FT(600,40);  const sw=x.measureText(' / 4.5').width;
+  let sx=cx-(gw+sw)/2;
+  x.fillStyle='#ffffff'; x.font=FT(800,104); x.fillText(gpaTxt,sx,top+120);
+  x.fillStyle='#98989e'; x.font=FT(600,40);  x.fillText(' / 4.5',sx+gw,top+120);
+  x.textAlign='center';
+  if(st.avgPct!==null){
+    const L=letterForPct(st.avgPct);
+    x.fillStyle=GRADE_HEX[L[0]]; x.font=FT(700,40);
+    x.fillText(`평균 ${st.avgPct.toFixed(0)}점 · ${L}`, cx, top+184);
+  }else{
+    x.fillStyle='#6e6e73'; x.font=FT(600,34); x.fillText('기록 없음', cx, top+184);
+  }
+  top+=heroH+36;
+
+  /* 달력 */
+  card(top,calH);
+  const gridW=W-2*P-48, colW=gridW/7, gx0=P+24;
+  x.font=FT(600,26);
+  WEEKDAYS.forEach((d,i)=>{
+    x.fillStyle= i===0?'#ff6b6b': i===6?'#5ea0ff':'#98989e';
+    x.fillText(d, gx0+colW*i+colW/2, top+46);
+  });
+  let day=1-first.getDay();
+  for(let r=0;r<weeks;r++){
+    for(let c=0;c<7;c++,day++){
+      if(day<1||day>dim) continue;
+      const ccx=gx0+colW*c+colW/2, ccy=top+calHeadH+r*calRowH;
+      x.fillStyle='#8e8e93'; x.font=FT(600,26); x.fillText(String(day), ccx, ccy+30);
+      const date=`${ym}-${pad(day)}`;
+      const g=days[date]?gradeOf(getEntry(date)):null;
+      if(g){
+        const hex=GRADE_HEX[g.letter[0]];
+        x.fillStyle=hex; x.beginPath(); x.roundRect(ccx-34,ccy+42,68,46,14); x.fill();
+        x.fillStyle=(g.letter[0]==='C'||g.letter[0]==='D')?'#000':'#fff';
+        x.font=FT(800,28); x.fillText(g.letter, ccx, ccy+75);
+      }else{
+        x.fillStyle='#3a3a3c'; x.beginPath(); x.arc(ccx,ccy+62,4,0,7); x.fill();
+      }
+    }
+  }
+  top+=calH+36;
+
+  /* 과목별 달성률 */
+  card(top,statH);
+  x.textAlign='left'; x.fillStyle='#98989e'; x.font=FT(700,28);
+  x.fillText('과목별 달성률', P+28, top+52);
+  statRows.forEach((s,i)=>{
+    const ry=top+78+i*statRowH+34;
+    x.fillStyle='#ffffff'; x.font=FT(600,28); x.textAlign='left';
+    x.fillText(s.label, P+28, ry);
+    const bx=P+272, bw=W-2*P-272-176, bh=14;
+    x.fillStyle='#2c2c2e'; x.beginPath(); x.roundRect(bx,ry-14,bw,bh,7); x.fill();
+    if(s.pct){ x.fillStyle='#0a84ff'; x.beginPath(); x.roundRect(bx,ry-14,bw*Math.min(1,s.pct/100),bh,7); x.fill(); }
+    x.fillStyle='#98989e'; x.font=FT(600,25); x.textAlign='right';
+    x.fillText(s.pct!==null?`${s.txt} · ${s.pct.toFixed(0)}%`:'–', W-P-28, ry);
+  });
+
+  /* 푸터 */
+  x.fillStyle='#5a5a5e'; x.font=FT(600,24); x.textAlign='center';
+  x.fillText(`${st.graded.length}일 채점 · 하루학점`, W/2, H-40);
+  return cv;
+}
+function downloadMonthImage(ym){
+  const cv=buildMonthCanvas(ym);
+  cv.toBlob(b=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download=`${ym}-성적표.png`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  },'image/png');
 }
 
 /* ---------- 파일 ---------- */
@@ -765,7 +879,7 @@ $('#view').addEventListener('click', ev=>{
   }
   else if(act==='month-shift'){ state.month=shiftYm(state.month,+el.dataset.d); renderMonth(); }
   else if(act==='cal-day'){ state.date=el.dataset.date; state.view='entry'; render(); window.scrollTo(0,0); }
-  else if(act==='export-md'){ download(`${state.month}.md`, monthMd(state.month), 'text/markdown'); }
+  else if(act==='export-img'){ downloadMonthImage(state.month); toast('🖼️ 이미지 저장 중…'); }
   else if(act==='push-month'){ dirtyMonths.add(state.month); pushDirty(false); }
   else if(act==='pull-month'){ pullMonth(state.month, false); }
   else if(act==='gh-test'){
