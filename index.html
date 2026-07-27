@@ -132,18 +132,6 @@ button{font-family:inherit; color:var(--ink)}
   font-family:inherit; text-align:right; outline:none; min-width:0;
 }
 .set-row input::placeholder{color:var(--sub); opacity:.6}
-/* iOS switch */
-.switch{position:relative; width:51px; height:31px; margin-left:auto; flex-shrink:0}
-.switch input{opacity:0; width:0; height:0}
-.switch i{
-  position:absolute; inset:0; background:var(--seg); border-radius:99px; transition:.2s; cursor:pointer;
-}
-.switch i::after{
-  content:''; position:absolute; width:27px; height:27px; border-radius:99px; background:#fff;
-  top:2px; left:2px; transition:.2s; box-shadow:0 2px 5px rgba(0,0,0,.25);
-}
-.switch input:checked + i{background:var(--ok)}
-.switch input:checked + i::after{left:22px}
 .btn-list button{
   display:block; width:100%; border:none; background:none; text-align:left;
   padding:13px 16px; font-size:.95rem; color:var(--accent); font-weight:600; cursor:pointer;
@@ -284,9 +272,9 @@ function updateEntry(date, mutate){
 
 /* ---------- 설정 (URL 해시 > localStorage > 기본값) ---------- */
 function settings(){
-  try{ return Object.assign({repo:DEFAULT_REPO,branch:'main',path:'data',token:'',autoPush:true},
+  try{ return Object.assign({repo:DEFAULT_REPO,branch:'main',path:'data',token:''},
         JSON.parse(localStorage.getItem('pg:settings')||'{}')); }
-  catch(e){ return {repo:DEFAULT_REPO,branch:'main',path:'data',token:'',autoPush:true}; }
+  catch(e){ return {repo:DEFAULT_REPO,branch:'main',path:'data',token:''}; }
 }
 function saveSettings(patch){
   localStorage.setItem('pg:settings', JSON.stringify(Object.assign(settings(), patch)));
@@ -366,7 +354,7 @@ let pushTimer=null;
 function markDirty(ym){
   dirtyMonths.add(ym);
   const s=settings();
-  if(s.autoPush && s.repo && s.token){
+  if(s.repo && s.token){
     clearTimeout(pushTimer);
     pushTimer=setTimeout(()=>pushDirty(true), 1500);
   }
@@ -672,8 +660,6 @@ function renderSettings(){
       <input type="text" id="setPath" value="${escHtml(s.path)}"></div>
     <div class="set-row"><label>토큰</label>
       <input type="password" id="setToken" placeholder="github_pat_..." value="${escHtml(s.token)}"></div>
-    <div class="set-row"><label>자동 저장</label>
-      <label class="switch"><input type="checkbox" id="setAuto" ${s.autoPush?'checked':''}><i></i></label></div>
   </div>
   <div class="card btn-list" style="margin-top:10px">
     <button data-act="gh-test">연결 테스트</button>
@@ -712,7 +698,6 @@ function renderSettings(){
   $('#setBranch').addEventListener('change', ev=>saveSettings({branch:ev.target.value.trim()||'main'}));
   $('#setPath').addEventListener('change', ev=>saveSettings({path:ev.target.value.trim().replace(/^\/+|\/+$/g,'')}));
   $('#setToken').addEventListener('change', ev=>saveSettings({token:ev.target.value.trim()}));
-  $('#setAuto').addEventListener('change', ev=>saveSettings({autoPush:ev.target.checked}));
 }
 
 /* ---------- 월간 성적표 이미지 ---------- */
